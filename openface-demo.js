@@ -153,17 +153,74 @@ function sendState() {
     socket.send(JSON.stringify(msg));
 }
 
+function searchNewServer(){
+    
+    var serverIndex = 0
+    var totalTry = 0;
+    while (serverConnectionError ){
+        if (totalTry >= serverlist.length) {
+            break 
+        }
+        totalTry++
+        serverIndex = (currentServerIndex + totalTry) % serverlist.length
+
+        redrawPeople();
+        createSocket("wss://" + serverlist[serverIndex] + ":9000", "New");
+    }
+    if (serverConnectionError){
+        console.log("! ! cannot find any available server.");
+    }else{
+        currentServerIndex = serverIndex
+        console.log("!! find a new server: " + serverlist[currentServerIndex])
+        window.location.hostname = serverlist[currentServerIndex]
+
+        clearInterval(searchInterval)
+    }
+}
+
 function createSocket(address, name) {
     socket = new WebSocket(address);
     socketName = name;
     socket.binaryType = "arraybuffer";
+    function ping(){
+
+        if (serverConnectionError){
+            return
+        }
+        if (socket != null) { 
+            socket.send(JSON.stringify({'type': 'CLIENTPING'}));
+        }
+
+        pingPongTimeout = setTimeout(function(){
+            serverConnectionError=true
+            console.log("connection no ping/pong response...");
+            socket.close()
+            console.log("now stop ping pong..")
+            clearInterval(pingPongInterval)
+
+            console.log("Start searching interval, trying to connect a new server....");
+            serverConnectionError=true
+            searchNewServer()
+            searchInterval = setInterval (searchNewServer, 5000)
+
+        }, 2000)
+    }
+    function clear_ping_timer(){
+         if(pingPongTimeout){
+            clearTimeout(pingPongTimeout)
+        }
+    }
+
     socket.onopen = function() {
+        serverConnectionError = false;
         $("#serverStatus").html("Connected to " + name);
         sentTimes = [];
         receivedTimes = [];
         tok = defaultTok;
         numNulls = 0
 
+        ping()
+        pingPongInterval = setInterval(ping, 1000)
         socket.send(JSON.stringify({'type': 'NULL'}));
         sentTimes.push(new Date());
     }
@@ -217,12 +274,15 @@ function createSocket(address, name) {
             BootstrapDialog.show({
                 message: "<img src='" + j['content'] + "' width='100%'></img>"
             });
+        } else if (j.type == "SERVERPONG"){
+            clear_ping_timer()
         } else {
             console.log("Unrecognized message type: " + j.type);
         }
     }
     socket.onerror = function(e) {
         console.log("Error creating WebSocket connection to " + address);
+        serverConnectionError=true
         console.log(e);
     }
     socket.onclose = function(e) {

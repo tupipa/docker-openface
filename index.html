@@ -227,6 +227,14 @@ limitations under the License.
      var numNulls, sentTimes, receivedTimes;
      var socket, socketName;
 
+     var pingPongTimeout = null;
+     var pingPongInterval = null;
+     var searchInterval = null;
+     
+     var serverConnectionError = false;
+     var serverlist = ["localhost", "192.168.111.198", "192.168.111.197"];
+     var currentServerIndex = 0;
+
      var autoTestEnabled = 1;
      var msg_select_file = "Need to select a file to read.";
      var msg_webcam = "webcam mode";
