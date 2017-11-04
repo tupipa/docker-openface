@@ -162,7 +162,10 @@ function searchNewServer(){
             break 
         }
         totalTry++
+        console.log("Now totalTry: " + totalTry)
         serverIndex = (currentServerIndex + totalTry) % serverlist.length
+
+        console.log("server Index: " + serverIndex + ". server: " + serverlist[serverIndex] )
 
         redrawPeople();
         createSocket("wss://" + serverlist[serverIndex] + ":9000", "New");
@@ -177,7 +180,32 @@ function searchNewServer(){
         clearInterval(searchInterval)
     }
 }
+function pingPongTimeoutFunction (){
 
+    console.log("connection no ping/pong response...");
+
+    if (!serverConnectionError) {
+        serverConnectionError=true
+    }
+
+    if (socket_connected ) {
+        socket.close()
+        socket_connected = false;
+    }
+
+    if(pingPongEnabled){
+        console.log("now stop ping pong..")
+        clearInterval(pingPongInterval)
+        pingPongEnabled = false;
+    }
+
+    console.log("Start searching interval, trying to connect a new server....");
+    serverConnectionError=true
+    searchNewServer()
+    //searchInterval = setInterval (searchNewServer, 20000)
+
+
+}
 function createSocket(address, name) {
     socket = new WebSocket(address);
     socketName = name;
@@ -187,28 +215,21 @@ function createSocket(address, name) {
         if (serverConnectionError){
             return
         }
+
         if (socket != null) { 
             socket.send(JSON.stringify({'type': 'CLIENTPING'}));
+        }else{
+            serverConnectionError = true;
+            return
         }
 
-        pingPongTimeout = setTimeout(function(){
-            serverConnectionError=true
-            console.log("connection no ping/pong response...");
-            socket.close()
-            console.log("now stop ping pong..")
-            clearInterval(pingPongInterval)
-
-            console.log("Start searching interval, trying to connect a new server....");
-            serverConnectionError=true
-            searchNewServer()
-            searchInterval = setInterval (searchNewServer, 5000)
-
-        }, 2000)
+        pingPongTimeout = setTimeout(pingPongTimeoutFunction, pingPongTimeoutTime)
     }
+
     function clear_ping_timer(){
          if(pingPongTimeout){
             clearTimeout(pingPongTimeout)
-        }
+         }
     }
 
     socket.onopen = function() {
@@ -220,7 +241,9 @@ function createSocket(address, name) {
         numNulls = 0
 
         ping()
-        pingPongInterval = setInterval(ping, 1000)
+        pingPongInterval = setInterval(ping, pingPongIntervalTime)
+        pingPongEnabled = true;
+
         socket.send(JSON.stringify({'type': 'NULL'}));
         sentTimes.push(new Date());
     }

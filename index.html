@@ -227,10 +227,13 @@ limitations under the License.
      var numNulls, sentTimes, receivedTimes;
      var socket, socketName;
 
+     var pingPongEnabled = true;
+     var pingPongTimeoutTime = 1000;
+     var pingPongIntervalTime = 1000;
      var pingPongTimeout = null;
      var pingPongInterval = null;
      var searchInterval = null;
-     
+
      var serverConnectionError = false;
      var serverlist = ["localhost", "192.168.111.198", "192.168.111.197"];
      var currentServerIndex = 0;
